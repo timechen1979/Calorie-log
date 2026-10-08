@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>智慧飲控紀錄</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -31,7 +31,7 @@
         }
     </style>
 </head>
-<body class="h-screen w-screen overflow-hidden text-gray-800 flex justify-center">
+<body class="h-[100dvh] w-screen overflow-hidden text-gray-800 flex justify-center">
 
     <div class="w-full max-w-md h-full bg-white relative flex flex-col shadow-2xl">
         
@@ -63,7 +63,7 @@
                 </div>
             </div>
 
-            <div class="flex-1 overflow-y-auto no-scrollbar p-6 pb-24 bg-gray-50">
+            <div class="flex-1 overflow-y-auto no-scrollbar p-6 pb-6 bg-gray-50">
                 <div class="mb-6 relative">
                     <label for="food-search" class="block text-sm font-semibold text-gray-700 mb-1">記錄餐點</label>
                     <p class="text-[10px] text-gray-500 mb-2">💡 秘訣: 搜尋時加上單位最準確，如「1杯拿鐵」、「100g雞胸肉」</p>
@@ -151,7 +151,7 @@
                 <h1 class="text-xl font-bold mb-1">歷史趨勢</h1>
                 <p class="text-gray-400 text-xs">掌握您的飲食節奏</p>
             </div>
-            <div class="flex-1 overflow-y-auto no-scrollbar p-6 pb-24">
+            <div class="flex-1 overflow-y-auto no-scrollbar p-6 pb-6">
                 <div class="flex gap-4 mb-6">
                     <div class="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
                         <div class="text-xs text-gray-500 mb-1">平均熱量</div>
@@ -187,7 +187,7 @@
                 <p class="text-white/80 text-xs">管理您的偏好與系統設定</p>
             </div>
             
-            <div class="flex-1 overflow-y-auto no-scrollbar p-6 pb-24">
+            <div class="flex-1 overflow-y-auto no-scrollbar p-6 pb-6">
                 
                 <!-- 選單區塊：目標熱量 -->
                 <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-5 cursor-pointer hover:bg-gray-50 transition" id="profile-edit-target">
@@ -254,7 +254,7 @@
         </div>
 
         <!-- ================= 底部導航 ================= -->
-        <div class="absolute bottom-0 w-full glass-panel border-t border-gray-200 flex justify-around items-center py-4 px-6 z-20">
+        <div class="w-full glass-panel border-t border-gray-200 flex justify-around items-center pt-4 px-6 z-20 shrink-0" style="padding-bottom: max(1rem, env(safe-area-inset-bottom, 1rem));">
             <button id="nav-home" class="flex flex-col items-center text-emerald-600 transition-colors">
                 <i class="ph-fill ph-book-open text-2xl"></i>
                 <span class="text-[10px] mt-1 font-semibold">紀錄</span>
@@ -328,7 +328,7 @@
         // 如果您想讓親友直接使用，請將您申請到的金鑰填入下方的單引號中。
         // 例如：const DEFAULT_API_KEY = 'sk_live_12345abcde...';
         // 若保持空白，則維持需要使用者手動輸入的模式。
-        const DEFAULT_API_KEY = 'fn_atKxFUb7GxL3I4rmCvcSKV6Cwdn4QFnPlRLXvdtUg4Q'; 
+        const DEFAULT_API_KEY = ''; 
         // ==========================================
 
         // 台灣衛福部資料庫 (簡化版模擬)
