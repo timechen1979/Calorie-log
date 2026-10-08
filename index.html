@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>智慧飲控紀錄</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f3f4f6;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.5s ease-in-out;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden text-gray-800 flex justify-center">
+
+    <div class="w-full max-w-md h-full bg-white relative flex flex-col shadow-2xl">
+        
+        <!-- 首頁視圖 (今日紀錄) -->
+        <div id="view-home" class="flex flex-col flex-1 w-full overflow-hidden">
+            <!-- 頂部區塊 -->
+            <div class="px-6 pt-10 pb-6 bg-gradient-to-br from-green-400 to-emerald-600 text-white rounded-b-3xl shadow-lg z-10 flex-shrink-0">
+                <div class="relative w-24 h-24">
+                    <svg class="w-full h-full" viewBox="0 0 100 100">
+                        <circle class="text-white/30 stroke-current" stroke-width="8" cx="50" cy="50" r="40" fill="transparent"></circle>
+                        <circle id="calorie-progress" class="text-white progress-ring__circle stroke-current" stroke-width="8" stroke-linecap="round" cx="50" cy="50" r="40" fill="transparent" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="consumed-calories" class="text-2xl font-bold">0</span>
+                        <span class="text-xs opacity-80">kcal</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-end">
+                    <span class="text-sm opacity-90 mb-1">目標熱量: <span id="target-calories-display">2000</span></span>
+                    <div class="text-right">
+                        <span class="text-sm opacity-90">剩餘可攝取</span>
+                        <div class="text-3xl font-bold"><span id="remaining-calories">2000</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 中間可滾動區塊 -->
+            <div class="flex-1 overflow-y-auto no-scrollbar p-6 pb-24 bg-gray-50">
+                
+                <div class="mb-6 relative">
+                    <label for="food-search" class="block text-sm font-semibold text-gray-700 mb-2">記錄餐點 (支援中英文)</label>
+                    <div class="relative">
+                        <input type="text" id="food-search" class="w-full pl-10 pr-12 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="可加份量更準！例：1顆蘋果、100g牛肉...">
+                        <i class="ph ph-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg"></i>
+                        <button id="search-btn" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 text-white p-2 rounded-xl hover:bg-emerald-600 transition-colors">
+                            <i class="ph ph-arrow-right text-lg"></i>
+                        </button>
+                    </div>
+                    <p class="text-[11px] text-gray-500 mt-2 ml-1 space-y-1">
+                        <span class="flex items-center gap-1"><i class="ph ph-database text-emerald-500"></i> 優先搜尋台灣資料庫 ➔ 找不到再查 Calorie API</span>
+                        <span class="flex items-center gap-1"><i class="ph ph-lightbulb text-amber-500"></i> 提示：外國API搜「100g豬肉」比單搜「豬肉」更準喔！</span>
+                    </p>
+                </div>
+
+                <button id="toggle-manual-btn" class="mb-6 text-sm text-emerald-600 font-semibold flex items-center gap-1 hover:text-emerald-700 transition-colors">
+                    <i class="ph-bold ph-plus-circle"></i> 找不到？手動輸入餐點
+                </button>
+                <div id="manual-add-panel" class="hidden mb-6 p-4 bg-white border border-emerald-100 rounded-2xl shadow-sm relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
+                    <h3 class="text-sm font-bold text-gray-800 mb-3">✍️ 手動紀錄飲食</h3>
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="manual-food-name" class="w-2/3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="名稱 (如: 自己做的便當)">
+                        <input type="number" id="manual-food-calories" class="w-1/3 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="大卡">
+                    </div>
+                    <button id="manual-add-submit" class="w-full bg-emerald-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-emerald-600 transition-colors shadow-sm">
+                        新增至今日紀錄
+                    </button>
+                </div>
+
+                <div id="error-message" class="hidden mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
+                    <i class="ph ph-warning-circle text-lg inline-block align-middle mr-1"></i>
+                    <span id="error-text" class="align-middle">錯誤訊息</span>
+                </div>
+
+                <div id="search-status" class="hidden mb-4 text-center text-sm text-gray-500">
+                    <i class="ph ph-spinner animate-spin inline-block mr-1"></i> 搜尋中...
+                </div>
+
+                <div id="search-result-card" class="hidden bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6 transition-all relative overflow-hidden">
+                    <div id="data-source-badge" class="absolute top-0 right-0 bg-orange-100 text-orange-700 text-[10px] px-2 py-1 rounded-bl-lg font-semibold">
+                        來源: 台灣資料庫
+                    </div>
+
+                    <div class="flex justify-between items-start mb-3 pt-2">
+                        <div>
+                            <h3 id="result-title" class="font-bold text-gray-800 text-lg capitalize">Apple</h3>
+                            <p id="result-translation" class="text-xs text-gray-500">原文: 蘋果</p>
+                        </div>
+                        <div class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-bold">
+                            <span id="result-calories">95</span> kcal
+                        </div>
+                    </div>
+                    <div class="flex gap-2 mb-4 text-xs">
+                        <div class="bg-gray-50 px-2 py-1 rounded text-gray-600">碳水: <span id="result-carbs">25</span>g</div>
+                        <div class="bg-gray-50 px-2 py-1 rounded text-gray-600">蛋白質: <span id="result-protein">0.5</span>g</div>
+                        <div class="bg-gray-50 px-2 py-1 rounded text-gray-600">脂肪: <span id="result-fat">0.3</span>g</div>
+                    </div>
+
+                    <!-- 份量倍數調整區塊 (新增) -->
+                    <div class="mt-4 mb-4 bg-gray-50 p-3 rounded-xl border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <label class="block text-sm font-semibold text-gray-700">攝取份量 (倍數)</label>
+                            <p class="text-[10px] text-gray-500 mt-0.5" id="result-note">* 若資料庫以 100g 為單位，吃 250g 請輸入 2.5</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="qty-minus" class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-emerald-600 transition-colors shadow-sm"><i class="ph-bold ph-minus"></i></button>
+                            <input type="number" id="result-qty" value="1.0" step="0.1" min="0.1" class="w-14 py-1 text-center bg-transparent font-bold text-gray-800 focus:outline-none border-b-2 border-transparent focus:border-emerald-500 transition-colors">
+                            <button id="qty-plus" class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-emerald-600 transition-colors shadow-sm"><i class="ph-bold ph-plus"></i></button>
+                        </div>
+                    </div>
+                    
+                    <button id="add-food-btn" class="w-full bg-gray-900 text-white py-3 rounded-xl font-semibold hover:bg-gray-800 transition-colors flex justify-center items-center gap-2 shadow-sm">
+                        <i class="ph ph-plus-circle text-lg"></i> 新增至今日紀錄
+                    </button>
+                </div>
+
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">今日已吃</h2>
+                    <div id="food-list" class="space-y-3">
+                        <div id="empty-state" class="text-center py-8 text-gray-400">
+                            <i class="ph ph-bowl-food text-4xl mb-2"></i>
+                            <p class="text-sm">尚未有任何紀錄，開始記錄您的第一餐吧！</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API 設定區 -->
+                <div class="mt-8 border-t border-gray-200 pt-6">
+                    <button id="toggle-settings" class="text-sm text-gray-500 flex items-center justify-between w-full font-medium">
+                        <span><i class="ph ph-key mr-1"></i> Calorie API 金鑰設定</span>
+                        <i id="settings-icon" class="ph ph-caret-down"></i>
+                    </button>
+                    <div id="settings-panel" class="hidden mt-4 space-y-3">
+                        <div class="p-3 bg-blue-50 text-blue-800 text-xs rounded-lg mb-3">
+                            請至 calorieapi.com 註冊免費帳號，並將取得的 API Key 貼在下方。若未設定，系統將使用隨機模擬數據。
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Your API Key (sk_live_...)</label>
+                            <input type="text" id="api-key" class="w-full px-3 py-2 border rounded-lg text-sm bg-white focus:ring-2 focus:ring-emerald-500 outline-none" placeholder="輸入您的 Calorie API Key">
+                        </div>
+                        <button id="save-settings-btn" class="w-full bg-emerald-500 text-white py-2 rounded-lg text-sm font-semibold hover:bg-emerald-600 transition-colors">儲存設定</button>
+                    </div>
+                </div>
+
+            </div>
+        </div> <!-- 結束 view-home -->
+
+        <!-- 趨勢視圖 -->
+        <div id="view-trends" class="hidden flex-col flex-1 w-full overflow-hidden bg-gray-50">
+            <div class="px-6 pt-10 pb-6 bg-gradient-to-br from-gray-800 to-gray-900 text-white rounded-b-3xl shadow-lg z-10 flex-shrink-0">
+                <h1 class="text-xl font-bold mb-1">一週趨勢</h1>
+                <p class="text-gray-400 text-xs">掌握您的飲食節奏</p>
+            </div>
+            <div class="flex-1 overflow-y-auto no-scrollbar p-6 pb-24">
+                <div class="flex gap-4 mb-6">
+                    <div class="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="text-xs text-gray-500 mb-1">本週平均</div>
+                        <div class="text-xl font-bold text-gray-800"><span id="trend-avg">0</span> <span class="text-[10px] text-gray-400 font-normal">kcal</span></div>
+                    </div>
+                    <div class="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="text-xs text-gray-500 mb-1">達標天數</div>
+                        <div class="text-xl font-bold text-emerald-500"><span id="trend-success">0</span> <span class="text-[10px] text-gray-400 font-normal">天</span></div>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="font-bold text-gray-800 text-sm">近七天熱量攝取</h3>
+                        <span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-semibold">目標: 2000</span>
+                    </div>
+                    <div class="relative h-48 w-full flex items-end justify-between gap-1 sm:gap-2 mt-4" id="trend-chart-container">
+                        <div id="trend-target-line" class="absolute w-full border-t-2 border-dashed border-emerald-400 z-0" style="bottom: 50%;"></div>
+                    </div>
+                </div>
+                <div class="bg-blue-50 text-blue-800 p-4 rounded-2xl text-xs flex gap-2">
+                    <i class="ph-fill ph-info text-lg flex-shrink-0"></i>
+                    <p class="leading-relaxed">這是一個展示用的趨勢頁面。目前包含過去六天的模擬數據以及您今日的實際紀錄，讓您預覽報表效果。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部導航 -->
+        <div class="absolute bottom-0 w-full glass-panel border-t border-gray-200 flex justify-around items-center py-4 px-6 z-20">
+            <button id="nav-home" class="flex flex-col items-center text-emerald-600 transition-colors">
+                <i class="ph-fill ph-book-open text-2xl"></i>
+                <span class="text-[10px] mt-1 font-semibold">紀錄</span>
+            </button>
+            <button id="nav-trends" class="flex flex-col items-center text-gray-400 hover:text-gray-600 transition-colors">
+                <i class="ph ph-chart-line-up text-2xl"></i>
+                <span class="text-[10px] mt-1 font-semibold">趨勢</span>
+            </button>
+            <button id="nav-profile" class="flex flex-col items-center text-gray-400 hover:text-gray-600 transition-colors" onclick="showToast('個人設定開發中')">
+                <i class="ph ph-user text-2xl"></i>
+                <span class="text-[10px] mt-1 font-semibold">我的</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 自訂提示訊息 Toast -->
+    <div id="toast-message" class="fixed top-10 left-1/2 transform -translate-x-1/2 bg-gray-800/95 text-white px-5 py-2.5 rounded-full shadow-lg z-[100] transition-all duration-300 opacity-0 pointer-events-none translate-y-[-20px] backdrop-blur-sm text-sm font-medium whitespace-nowrap">
+        <span id="toast-text">訊息內容</span>
+    </div>
+
+    <!-- 編輯紀錄 Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+            <div class="flex items-center gap-2 mb-4 text-emerald-600">
+                <i class="ph-fill ph-pencil-simple text-xl"></i>
+                <h3 class="text-lg font-bold text-gray-800">修改紀錄</h3>
+            </div>
+            <div class="mb-4">
+                <label class="block text-xs font-semibold text-gray-600 mb-2">食物名稱</label>
+                <input type="text" id="edit-modal-food-name-input" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium text-gray-700">
+            </div>
+            <div class="mb-6">
+                <label class="block text-xs font-semibold text-gray-600 mb-2">新的熱量數值 (大卡)</label>
+                <input type="number" id="edit-modal-calories" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-lg font-bold text-gray-700">
+            </div>
+            <div class="flex gap-3">
+                <button id="edit-modal-cancel" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-colors">取消</button>
+                <button id="edit-modal-save" class="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 transition-colors shadow-md shadow-emerald-200">儲存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const taiwanLocalDB = [
+            { name: "滷肉飯 (一碗)", calories: 440, carbs: 55, protein: 12, fat: 18 },
+            { name: "茶葉蛋 (一顆)", calories: 75, carbs: 1, protein: 7, fat: 5 },
+            { name: "排骨便當", calories: 850, carbs: 90, protein: 35, fat: 38 },
+            { name: "珍珠奶茶 (全糖)", calories: 650, carbs: 110, protein: 2, fat: 15 }
+        ];
+
+        let dailyTarget = 2000;
+        let consumed = 0;
+        let foodLogs = [];
+        
+        let baseSearchResult = null; // 儲存原始1倍的搜尋資料
+        let currentSearchResult = null; // 儲存經過倍數計算後的資料
+        
+        let editingLogId = null;
+
+        const ui = {
+            searchBtn: document.getElementById('search-btn'),
+            searchInput: document.getElementById('food-search'),
+            status: document.getElementById('search-status'),
+            errorMsg: document.getElementById('error-message'),
+            errorText: document.getElementById('error-text'),
+            resultCard: document.getElementById('search-result-card'),
+            foodList: document.getElementById('food-list'),
+            emptyState: document.getElementById('empty-state'),
+            addBtn: document.getElementById('add-food-btn'),
+            consumedDisplay: document.getElementById('consumed-calories'),
+            remainingDisplay: document.getElementById('remaining-calories'),
+            progressCircle: document.getElementById('calorie-progress'),
+            toggleSettings: document.getElementById('toggle-settings'),
+            settingsPanel: document.getElementById('settings-panel'),
+            settingsIcon: document.getElementById('settings-icon'),
+            apiKeyInput: document.getElementById('api-key'),
+            saveSettingsBtn: document.getElementById('save-settings-btn'),
+            sourceBadge: document.getElementById('data-source-badge'),
+            resultNote: document.getElementById('result-note'),
+            
+            toggleManualBtn: document.getElementById('toggle-manual-btn'),
+            manualAddPanel: document.getElementById('manual-add-panel'),
+            manualAddSubmit: document.getElementById('manual-add-submit'),
+            manualFoodName: document.getElementById('manual-food-name'),
+            manualFoodCalories: document.getElementById('manual-food-calories'),
+            editModal: document.getElementById('edit-modal'),
+            editModalFoodNameInput: document.getElementById('edit-modal-food-name-input'),
+            editModalCalories: document.getElementById('edit-modal-calories'),
+            editModalCancel: document.getElementById('edit-modal-cancel'),
+            editModalSave: document.getElementById('edit-modal-save'),
+            toastMessage: document.getElementById('toast-message'),
+            toastText: document.getElementById('toast-text'),
+
+            viewHome: document.getElementById('view-home'),
+            viewTrends: document.getElementById('view-trends'),
+            navHome: document.getElementById('nav-home'),
+            navTrends: document.getElementById('nav-trends'),
+            trendChartContainer: document.getElementById('trend-chart-container'),
+            trendTargetLine: document.getElementById('trend-target-line'),
+            trendAvg: document.getElementById('trend-avg'),
+            trendSuccess: document.getElementById('trend-success'),
+
+            // 份量調整 UI
+            qtyInput: document.getElementById('result-qty'),
+            qtyMinus: document.getElementById('qty-minus'),
+            qtyPlus: document.getElementById('qty-plus')
+        };
+
+        function init() {
+            loadData();
+            updateUI();
+            setupEventListeners();
+        }
+
+        function setupEventListeners() {
+            ui.navHome.addEventListener('click', () => switchView('home'));
+            ui.navTrends.addEventListener('click', () => switchView('trends'));
+
+            ui.searchBtn.addEventListener('click', handleSearch);
+            ui.searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSearch();
+            });
+            ui.addBtn.addEventListener('click', () => {
+                if (currentSearchResult) {
+                    addFoodLog(currentSearchResult);
+                    ui.resultCard.classList.add('hidden');
+                    ui.searchInput.value = '';
+                }
+            });
+            ui.toggleSettings.addEventListener('click', () => {
+                ui.settingsPanel.classList.toggle('hidden');
+                ui.settingsIcon.classList.toggle('ph-caret-up');
+                ui.settingsIcon.classList.toggle('ph-caret-down');
+            });
+            ui.saveSettingsBtn.addEventListener('click', () => {
+                const key = ui.apiKeyInput.value.trim();
+                if(key) {
+                    localStorage.setItem('calorie_api_key', key);
+                    showToast('Calorie API 金鑰已儲存！');
+                } else {
+                    localStorage.removeItem('calorie_api_key');
+                    showToast('已清除金鑰，將使用模擬數據。');
+                }
+            });
+
+            ui.toggleManualBtn.addEventListener('click', () => {
+                ui.manualAddPanel.classList.toggle('hidden');
+            });
+
+            ui.manualAddSubmit.addEventListener('click', () => {
+                const name = ui.manualFoodName.value.trim();
+                const cals = parseInt(ui.manualFoodCalories.value);
+                if (!name || isNaN(cals) || cals < 0) {
+                    showToast('請輸入完整的食物名稱與正確的熱量！');
+                    return;
+                }
+                const manualFood = {
+                    name: name,
+                    originalName: name,
+                    calories: cals,
+                    carbs: '-', protein: '-', fat: '-',
+                    source: 'manual'
+                };
+                addFoodLog(manualFood);
+                ui.manualFoodName.value = '';
+                ui.manualFoodCalories.value = '';
+                ui.manualAddPanel.classList.add('hidden');
+                showToast('已手動新增紀錄！');
+            });
+
+            ui.editModalCancel.addEventListener('click', () => {
+                ui.editModal.classList.add('hidden');
+                editingLogId = null;
+            });
+
+            ui.editModalSave.addEventListener('click', () => {
+                const newName = ui.editModalFoodNameInput.value.trim();
+                const newCals = parseInt(ui.editModalCalories.value);
+                
+                if (!newName) {
+                    showToast('請輸入食物名稱！');
+                    return;
+                }
+                if (isNaN(newCals) || newCals < 0) {
+                    showToast('請輸入有效的熱量數值！');
+                    return;
+                }
+                
+                if (editingLogId) {
+                    const logIndex = foodLogs.findIndex(log => log.id === editingLogId);
+                    if (logIndex > -1) {
+                        consumed -= foodLogs[logIndex].calories; 
+                        foodLogs[logIndex].name = newName;       
+                        foodLogs[logIndex].calories = newCals;   
+                        consumed += newCals;                     
+                        saveData();
+                        updateUI();
+                        showToast('紀錄修改成功！');
+                    }
+                }
+                ui.editModal.classList.add('hidden');
+                editingLogId = null;
+            });
+
+            // --- 份量倍數調整事件 ---
+            ui.qtyMinus.addEventListener('click', () => {
+                let val = parseFloat(ui.qtyInput.value) || 1;
+                if (val > 0.1) { // 允許小數點倍數
+                    ui.qtyInput.value = Math.max(0.1, (val - 0.1)).toFixed(1);
+                    updateResultDisplay();
+                }
+            });
+
+            ui.qtyPlus.addEventListener('click', () => {
+                let val = parseFloat(ui.qtyInput.value) || 1;
+                ui.qtyInput.value = (val + 0.1).toFixed(1);
+                updateResultDisplay();
+            });
+
+            ui.qtyInput.addEventListener('change', () => {
+                let val = parseFloat(ui.qtyInput.value);
+                if (isNaN(val) || val <= 0) {
+                    ui.qtyInput.value = '1.0';
+                } else {
+                    ui.qtyInput.value = val.toFixed(1);
+                }
+                updateResultDisplay();
+            });
+        }
+
+        // --- 視圖切換與圖表邏輯 ---
+        function switchView(view) {
+            if (view === 'home') {
+                ui.viewHome.classList.remove('hidden');
+                ui.viewHome.classList.add('flex');
+                ui.viewTrends.classList.add('hidden');
+                ui.viewTrends.classList.remove('flex');
+                
+                ui.navHome.classList.replace('text-gray-400', 'text-emerald-600');
+                ui.navHome.querySelector('i').classList.replace('ph', 'ph-fill');
+                ui.navTrends.classList.replace('text-emerald-600', 'text-gray-400');
+                ui.navTrends.querySelector('i').classList.replace('ph-fill', 'ph');
+                
+            } else if (view === 'trends') {
+                ui.viewHome.classList.add('hidden');
+                ui.viewHome.classList.remove('flex');
+                ui.viewTrends.classList.remove('hidden');
+                ui.viewTrends.classList.add('flex');
+                
+                ui.navTrends.classList.replace('text-gray-400', 'text-emerald-600');
+                ui.navTrends.querySelector('i').classList.replace('ph', 'ph-fill');
+                ui.navHome.classList.replace('text-emerald-600', 'text-gray-400');
+                ui.navHome.querySelector('i').classList.replace('ph-fill', 'ph');
+                
+                renderTrendsChart(); 
+            }
+        }
+
+        function renderTrendsChart() {
+            const mockPastData = [1850, 2150, 1950, 1700, 2300, 1900];
+            const chartData = [...mockPastData, consumed];
+            const days = ['六天前', '五天前', '四天前', '三天前', '前天', '昨天', '今日'];
+            
+            const total = chartData.reduce((a, b) => a + b, 0);
+            const avg = Math.round(total / 7);
+            const successDays = chartData.filter(val => val <= dailyTarget).length;
+            
+            ui.trendAvg.textContent = avg;
+            ui.trendSuccess.textContent = successDays;
+
+            const existingBars = ui.trendChartContainer.querySelectorAll('.bar-col');
+            existingBars.forEach(bar => bar.remove());
+
+            const maxVal = Math.max(...chartData, dailyTarget + 400); 
+            const targetPercent = (dailyTarget / maxVal) * 100;
+            ui.trendTargetLine.style.bottom = `${targetPercent}%`;
+
+            chartData.forEach((val, index) => {
+                const heightPercent = (val / maxVal) * 100;
+                const isOverTarget = val > dailyTarget;
+                const isToday = index === 6;
+                
+                const barColor = isOverTarget ? 'bg-red-400' : 'bg-emerald-500';
+                const bgColor = isOverTarget ? 'bg-red-50' : 'bg-emerald-50';
+                const todayStyle = isToday ? 'ring-2 ring-emerald-300 ring-offset-1 ring-offset-gray-50' : '';
+
+                const col = document.createElement('div');
+                col.className = `bar-col relative flex-1 h-full flex flex-col justify-end items-center group rounded-t-md z-10 ${todayStyle}`;
+                
+                col.innerHTML = `
+                    <div class="absolute -top-8 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap pointer-events-none shadow-md">
+                        ${val} kcal
+                    </div>
+                    <div class="w-full ${bgColor} rounded-t-md relative h-full flex items-end overflow-hidden">
+                        <div class="w-full ${barColor} transition-all duration-[800ms] ease-out rounded-t-md" style="height: 0%"></div>
+                    </div>
+                    <span class="text-[9px] text-gray-500 mt-2 truncate w-full text-center font-medium">${days[index]}</span>
+                `;
+                
+                ui.trendChartContainer.appendChild(col);
+                
+                setTimeout(() => {
+                    col.querySelector(`.${barColor}`).style.height = `${heightPercent}%`;
+                }, 50 + (index * 50)); 
+            });
+        }
+
+        function showToast(msg) {
+            ui.toastText.textContent = msg;
+            ui.toastMessage.classList.remove('opacity-0', 'translate-y-[-20px]');
+            ui.toastMessage.classList.add('opacity-100', 'translate-y-0');
+            
+            if(window.toastTimer) clearTimeout(window.toastTimer);
+            window.toastTimer = setTimeout(() => {
+                ui.toastMessage.classList.remove('opacity-100', 'translate-y-0');
+                ui.toastMessage.classList.add('opacity-0', 'translate-y-[-20px]');
+            }, 3000);
+        }
+
+        function openEditModal(id) {
+            const log = foodLogs.find(l => l.id === id);
+            if(log) {
+                editingLogId = id;
+                ui.editModalFoodNameInput.value = log.name;
+                ui.editModalCalories.value = log.calories;
+                ui.editModal.classList.remove('hidden');
+            }
+        }
+
+        function showError(msg) {
+            ui.errorText.textContent = msg;
+            ui.errorMsg.classList.remove('hidden');
+            ui.status.classList.add('hidden');
+            ui.resultCard.classList.add('hidden');
+        }
+
+        async function handleSearch() {
+            const query = ui.searchInput.value.trim();
+            if (!query) return;
+
+            ui.errorMsg.classList.add('hidden');
+            ui.status.classList.remove('hidden');
+            ui.resultCard.classList.add('hidden');
+            ui.status.innerHTML = '<i class="ph ph-magnifying-glass animate-bounce inline-block mr-1"></i> 正在搜尋台灣本地資料庫...';
+            
+            try {
+                // 1. 本地搜尋
+                const localMatch = taiwanLocalDB.find(item => 
+                    item.name.toLowerCase().includes(query.toLowerCase()) || 
+                    query.toLowerCase().includes(item.name.toLowerCase())
+                );
+
+                if (localMatch) {
+                    await new Promise(r => setTimeout(r, 400));
+                    const resultData = {
+                        name: localMatch.name,
+                        originalName: query,
+                        calories: localMatch.calories,
+                        carbs: localMatch.carbs,
+                        protein: localMatch.protein,
+                        fat: localMatch.fat,
+                        source: 'tw_db'
+                    };
+                    showResultCard(resultData);
+                    return; 
+                }
+
+                // 2. 翻譯
+                ui.status.innerHTML = '<i class="ph ph-translate animate-pulse inline-block mr-1"></i> 嘗試翻譯並搜尋 Calorie API...';
+                let englishQuery = query;
+                if (/[\u4e00-\u9fa5]/.test(query)) {
+                    try {
+                        const transRes = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(query)}&langpair=zh-TW|en`);
+                        const transData = await transRes.json();
+                        if(transData?.responseData?.translatedText) englishQuery = transData.responseData.translatedText;
+                    } catch(e) { console.warn("翻譯失敗", e); }
+                }
+
+                ui.status.innerHTML = '<i class="ph ph-spinner animate-spin inline-block mr-1"></i> 正在連線 Calorie API...';
+                const apiKey = localStorage.getItem('calorie_api_key');
+
+                if (apiKey) {
+                    let response;
+                    try {
+                        const url = `https://api.calorieapi.com/api/v1/search/foods?q=${encodeURIComponent(englishQuery)}&limit=1`;
+                        response = await fetch(url, {
+                            method: 'GET',
+                            headers: {
+                                'X-API-Key': apiKey,
+                                'Accept': 'application/json'
+                            }
+                        });
+                    } catch (fetchError) {
+                        console.error("Fetch Error:", fetchError);
+                        throw new Error(`網路連線失敗 / CORS 錯誤。請確認您已在 GitHub Pages 或正式網域上執行此程式碼。(${fetchError.message})`);
+                    }
+                    
+                    if (response.status === 401) throw new Error("API 金鑰無效 (401)。請檢查您輸入的 Calorie API Key 是否正確且無前後空白。");
+                    if (response.status === 429) throw new Error("API 請求次數過多 (429)，請稍後再試。");
+                    if (response.status === 404) throw new Error(`找不到符合「${query}」的食物資料。`);
+                    if (!response.ok) throw new Error(`API 伺服器錯誤 (狀態碼: ${response.status})`);
+                    
+                    const data = await response.json();
+
+                    let foodList = [];
+                    if (Array.isArray(data)) foodList = data;
+                    else if (data.data && Array.isArray(data.data)) foodList = data.data;
+                    else if (data.items && Array.isArray(data.items)) foodList = data.items;
+
+                    if (foodList && foodList.length > 0) {
+                        const food = foodList[0];
+                        const resultData = {
+                            name: food.name || englishQuery,
+                            originalName: query,
+                            calories: Math.round(food.calories || 0),
+                            carbs: Math.round(food.carbohydrates || food.carbs || 0),
+                            protein: Math.round(food.protein || 0),
+                            fat: Math.round(food.fat || 0),
+                            source: 'calorie_api'
+                        };
+                        showResultCard(resultData);
+                    } else {
+                        throw new Error(`在資料庫中找不到「${query}」的熱量資訊。`);
+                    }
+                } else {
+                    await new Promise(r => setTimeout(r, 600));
+                    const resultData = generateMockData(englishQuery, query);
+                    showResultCard(resultData);
+                }
+
+            } catch (error) {
+                console.error(error);
+                showError(error.message);
+            } finally {
+                if(ui.status) ui.status.classList.add('hidden');
+            }
+        }
+
+        function showResultCard(data) {
+            baseSearchResult = data; // 存下原始 1 倍的數值
+            ui.qtyInput.value = '1.0'; // 重設倍數為 1
+            
+            document.getElementById('result-title').textContent = data.name;
+            document.getElementById('result-translation').textContent = `關鍵字: ${data.originalName}`;
+            
+            // 處理來源標籤
+            if (data.source === 'tw_db') {
+                ui.sourceBadge.textContent = '來源: 台灣資料庫';
+                ui.sourceBadge.className = 'absolute top-0 right-0 bg-orange-100 text-orange-700 text-[10px] px-2 py-1 rounded-bl-lg font-semibold';
+            } else if (data.source === 'calorie_api') {
+                ui.sourceBadge.textContent = '來源: Calorie API';
+                ui.sourceBadge.className = 'absolute top-0 right-0 bg-indigo-100 text-indigo-700 text-[10px] px-2 py-1 rounded-bl-lg font-semibold';
+            } else {
+                ui.sourceBadge.textContent = '來源: 系統估算 (Demo)';
+                ui.sourceBadge.className = 'absolute top-0 right-0 bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded-bl-lg font-semibold';
+            }
+
+            // 呼叫更新畫面的函式來處理數值顯示
+            updateResultDisplay();
+            ui.resultCard.classList.remove('hidden');
+        }
+
+        // --- 新增：負責依照「倍數」重新計算並更新畫面的函式 ---
+        function updateResultDisplay() {
+            if (!baseSearchResult) return;
+            
+            const qty = parseFloat(ui.qtyInput.value) || 1;
+            
+            // 計算乘上倍數後的值
+            const calcCals = Math.round(baseSearchResult.calories * qty);
+            const calcCarbs = (baseSearchResult.carbs * qty).toFixed(1);
+            const calcProtein = (baseSearchResult.protein * qty).toFixed(1);
+            const calcFat = (baseSearchResult.fat * qty).toFixed(1);
+
+            // 更新畫面 DOM
+            document.getElementById('result-calories').textContent = calcCals;
+            document.getElementById('result-carbs').textContent = calcCarbs;
+            document.getElementById('result-protein').textContent = calcProtein;
+            document.getElementById('result-fat').textContent = calcFat;
+
+            // 更新 currentSearchResult，這樣按下「新增」時才會存入正確的熱量與名稱
+            let displayName = baseSearchResult.name;
+            if (qty !== 1) displayName += ` (x${qty})`;
+
+            currentSearchResult = {
+                ...baseSearchResult,
+                name: displayName,
+                calories: calcCals,
+                carbs: calcCarbs,
+                protein: calcProtein,
+                fat: calcFat
+            };
+        }
+
+        function addFoodLog(foodItem) {
+            const newLog = {
+                id: Date.now().toString(),
+                ...foodItem,
+                time: new Date().toLocaleTimeString('zh-TW', {hour: '2-digit', minute:'2-digit'})
+            };
+            foodLogs.unshift(newLog);
+            consumed += newLog.calories;
+            saveData();
+            updateUI();
+        }
+
+        function removeLog(id) {
+            const index = foodLogs.findIndex(log => log.id === id);
+            if (index > -1) {
+                consumed -= foodLogs[index].calories;
+                foodLogs.splice(index, 1);
+                saveData();
+                updateUI();
+            }
+        }
+
+        function updateUI() {
+            ui.consumedDisplay.textContent = consumed;
+            let remaining = dailyTarget - consumed;
+            ui.remainingDisplay.textContent = remaining > 0 ? remaining : 0;
+            
+            if(remaining < 0) ui.remainingDisplay.classList.add('text-red-300');
+            else ui.remainingDisplay.classList.remove('text-red-300');
+
+            const circumference = 2 * Math.PI * 40;
+            let progress = consumed / dailyTarget;
+            if (progress > 1) progress = 1;
+            ui.progressCircle.style.strokeDashoffset = circumference - (progress * circumference);
+
+            if (progress < 0.5) {
+                ui.progressCircle.classList.remove('text-red-400', 'text-yellow-300');
+                ui.progressCircle.classList.add('text-white');
+            } else if (progress < 0.9) {
+                ui.progressCircle.classList.remove('text-red-400', 'text-white');
+                ui.progressCircle.classList.add('text-yellow-300');
+            } else {
+                ui.progressCircle.classList.remove('text-white', 'text-yellow-300');
+                ui.progressCircle.classList.add('text-red-400');
+            }
+
+            renderFoodList();
+        }
+
+        function renderFoodList() {
+            ui.foodList.innerHTML = '';
+            if (foodLogs.length === 0) {
+                ui.foodList.appendChild(ui.emptyState);
+                ui.emptyState.classList.remove('hidden');
+                return;
+            }
+            ui.emptyState.classList.add('hidden');
+
+            foodLogs.forEach(log => {
+                const sourceIcon = log.source === 'tw_db' ? '📍' : (log.source === 'calorie_api' ? '🌍' : (log.source === 'manual' ? '✍️' : '🤖'));
+                const sourceText = log.source === 'tw_db' ? '台灣' : (log.source === 'calorie_api' ? '全球' : (log.source === 'manual' ? '手動' : '系統'));
+
+                const item = document.createElement('div');
+                item.className = 'bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-center';
+                item.innerHTML = `
+                    <div class="flex items-center gap-3 w-[70%]">
+                        <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold flex-shrink-0">
+                            <i class="ph ph-fork-knife text-xl"></i>
+                        </div>
+                        <div class="overflow-hidden">
+                            <h4 class="font-bold text-gray-800 capitalize leading-tight truncate">${log.name}</h4>
+                            <span class="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">${sourceIcon} ${sourceText}</span>
+                            <span class="text-xs text-gray-400 ml-1">${log.time}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                        <div class="text-right mr-1">
+                            <span class="font-bold text-gray-700">${log.calories}</span>
+                            <span class="text-[10px] text-gray-400 block -mt-1">kcal</span>
+                        </div>
+                        <div class="flex flex-col gap-1 border-l border-gray-100 pl-2">
+                            <button onclick="openEditModal('${log.id}')" class="text-gray-400 hover:text-emerald-500 transition-colors bg-gray-50 rounded-md p-1" title="修改內容">
+                                <i class="ph-fill ph-pencil-simple text-sm"></i>
+                            </button>
+                            <button onclick="removeLog('${log.id}')" class="text-gray-400 hover:text-red-500 transition-colors bg-gray-50 rounded-md p-1" title="刪除">
+                                <i class="ph-fill ph-trash text-sm"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                ui.foodList.appendChild(item);
+            });
+        }
+
+        function saveData() {
+            localStorage.setItem('diet_logs', JSON.stringify(foodLogs));
+            localStorage.setItem('diet_consumed', consumed);
+        }
+
+        function loadData() {
+            const savedLogs = localStorage.getItem('diet_logs');
+            const savedConsumed = localStorage.getItem('diet_consumed');
+            ui.apiKeyInput.value = localStorage.getItem('calorie_api_key') || '';
+            
+            if (savedLogs) foodLogs = JSON.parse(savedLogs);
+            if (savedConsumed) consumed = parseInt(savedConsumed);
+        }
+
+        function generateMockData(enQuery, zhQuery) {
+            return {
+                name: enQuery,
+                originalName: zhQuery,
+                calories: Math.floor(Math.random() * 400) + 50,
+                carbs: Math.floor(Math.random() * 50),
+                protein: Math.floor(Math.random() * 30),
+                fat: Math.floor(Math.random() * 20),
+                source: 'demo'
+            };
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
