@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -181,7 +182,7 @@
             <div class="flex-1 overflow-y-auto no-scrollbar p-6 pb-24">
                 <div class="flex gap-4 mb-6">
                     <div class="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
-                        <div class="text-xs text-gray-500 mb-1">本週平均</div>
+                        <div class="text-xs text-gray-500 mb-1">近兩週平均</div>
                         <div class="text-xl font-bold text-gray-800"><span id="trend-avg">0</span> <span class="text-[10px] text-gray-400 font-normal">kcal</span></div>
                     </div>
                     <div class="flex-1 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
@@ -189,15 +190,25 @@
                         <div class="text-xl font-bold text-emerald-500"><span id="trend-success">0</span> <span class="text-[10px] text-gray-400 font-normal">天</span></div>
                     </div>
                 </div>
+                
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-gray-800 text-sm">近七天熱量攝取</h3>
+                        <h3 class="font-bold text-gray-800 text-sm">近 14 天熱量趨勢</h3>
                         <span id="trend-target-display" class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-semibold">目標: 2000</span>
                     </div>
-                    <div class="relative h-48 w-full flex items-end justify-between gap-1 sm:gap-2 mt-4" id="trend-chart-container">
-                        <div id="trend-target-line" class="absolute w-full border-t-2 border-dashed border-emerald-400 z-0" style="bottom: 50%;"></div>
+                    
+                    <!-- 可滑動的圖表容器 -->
+                    <div id="chart-scroll-wrapper" class="w-full overflow-x-auto no-scrollbar rounded-xl border border-gray-50" style="touch-action: pan-x;">
+                        <div class="relative" style="height: 240px; width: 600px; padding-right: 10px;">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="text-center mt-3 flex items-center justify-center gap-1 opacity-60">
+                        <i class="ph ph-arrows-left-right text-xs"></i>
+                        <span class="text-[10px]">左右滑動查看完整歷史紀錄</span>
                     </div>
                 </div>
+
                 <div class="bg-blue-50 text-blue-800 p-4 rounded-2xl text-xs flex gap-2">
                     <i class="ph-fill ph-info text-lg flex-shrink-0"></i>
                     <p class="leading-relaxed">趨勢圖目前包含過去六天的模擬數據以及您今日的實際紀錄，長條圖若超過您的自訂目標即會顯示為紅色警示。</p>
@@ -283,6 +294,7 @@
         let baseSearchResult = null;
         let currentSearchResult = null;
         let editingLogId = null;
+        let trendChartInstance = null; // 宣告全域的 Chart 實例變數
 
         const ui = {
             searchBtn: document.getElementById('search-btn'),
@@ -321,8 +333,6 @@
             viewTrends: document.getElementById('view-trends'),
             navHome: document.getElementById('nav-home'),
             navTrends: document.getElementById('nav-trends'),
-            trendChartContainer: document.getElementById('trend-chart-container'),
-            trendTargetLine: document.getElementById('trend-target-line'),
             trendAvg: document.getElementById('trend-avg'),
             trendSuccess: document.getElementById('trend-success'),
             trendTargetDisplay: document.getElementById('trend-target-display'),
@@ -515,53 +525,122 @@
         }
 
         function renderTrendsChart() {
-            const mockPastData = [1850, 2150, 1950, 1700, 2300, 1900];
+            // 模擬過去 13 天的歷史資料 (將與今天的紀錄組成 14 天)
+            const mockPastData = [1900, 2100, 1850, 1750, 2300, 1950, 1800, 1900, 1850, 1700, 1600, 2050, 1900];
             const chartData = [...mockPastData, consumed];
-            const days = ['六天前', '五天前', '四天前', '三天前', '前天', '昨天', '今日'];
             
+            // 自動生成對應的日期標籤 (X軸)
+            const labels = [];
+            const today = new Date();
+            for(let i = 13; i >= 1; i--) {
+                let d = new Date(today);
+                d.setDate(today.getDate() - i);
+                labels.push(`${d.getMonth()+1}/${d.getDate()}`);
+            }
+            labels.push('今日');
+            
+            // 計算平均與達標天數
             const total = chartData.reduce((a, b) => a + b, 0);
-            const avg = Math.round(total / 7);
+            const avg = Math.round(total / chartData.length);
             const successDays = chartData.filter(val => val <= dailyTarget).length;
             
             ui.trendAvg.textContent = avg;
             ui.trendSuccess.textContent = successDays;
             ui.trendTargetDisplay.textContent = '目標: ' + dailyTarget;
 
-            const existingBars = ui.trendChartContainer.querySelectorAll('.bar-col');
-            existingBars.forEach(bar => bar.remove());
+            // 動態計算 Y 軸最小值 (隱藏過低的數值以保持圖面簡潔)
+            const minData = Math.min(...chartData, dailyTarget);
+            // 將最小值減去一點緩衝空間，並向下取整至最接近的 100
+            const yMin = Math.max(0, Math.floor((minData - 200) / 100) * 100); 
 
-            const maxVal = Math.max(...chartData, dailyTarget + 400); 
-            const targetPercent = (dailyTarget / maxVal) * 100;
-            ui.trendTargetLine.style.bottom = `${targetPercent}%`;
+            // 目標熱量基準線的資料陣列
+            const targetLineData = Array(chartData.length).fill(dailyTarget);
 
-            chartData.forEach((val, index) => {
-                const heightPercent = (val / maxVal) * 100;
-                const isOverTarget = val > dailyTarget;
-                const isToday = index === 6;
-                
-                const barColor = isOverTarget ? 'bg-red-400' : 'bg-emerald-500';
-                const bgColor = isOverTarget ? 'bg-red-50' : 'bg-emerald-50';
-                const todayStyle = isToday ? 'ring-2 ring-emerald-300 ring-offset-1 ring-offset-gray-50' : '';
+            // 如果舊的圖表已經存在，先銷毀它以免重疊
+            if (trendChartInstance) {
+                trendChartInstance.destroy();
+            }
 
-                const col = document.createElement('div');
-                col.className = `bar-col relative flex-1 h-full flex flex-col justify-end items-center group rounded-t-md z-10 ${todayStyle}`;
-                
-                col.innerHTML = `
-                    <div class="absolute -top-8 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-20 whitespace-nowrap pointer-events-none shadow-md">
-                        ${val} kcal
-                    </div>
-                    <div class="w-full ${bgColor} rounded-t-md relative h-full flex items-end overflow-hidden">
-                        <div class="w-full ${barColor} transition-all duration-[800ms] ease-out rounded-t-md" style="height: 0%"></div>
-                    </div>
-                    <span class="text-[9px] text-gray-500 mt-2 truncate w-full text-center font-medium">${days[index]}</span>
-                `;
-                
-                ui.trendChartContainer.appendChild(col);
-                
-                setTimeout(() => {
-                    col.querySelector(`.${barColor}`).style.height = `${heightPercent}%`;
-                }, 50 + (index * 50)); 
+            // 設定 Chart.js 預設字型
+            Chart.defaults.font.family = "'Inter', -apple-system, sans-serif";
+
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '實際攝取',
+                            data: chartData,
+                            borderColor: '#10b981', // 翡翠綠
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderWidth: 3,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: '#10b981',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            fill: true,
+                            tension: 0.4 // 設定為 0.4 讓線條變成平滑曲線
+                        },
+                        {
+                            label: '目標熱量',
+                            data: targetLineData,
+                            borderColor: '#9ca3af', // 灰色
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0, // 隱藏目標線的端點
+                            fill: false,
+                            tension: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(31, 41, 55, 0.95)',
+                            titleFont: { size: 13, weight: 'normal' },
+                            bodyFont: { size: 14, weight: 'bold' },
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    if(context.datasetIndex === 1) return `目標: ${context.raw} kcal`;
+                                    return `攝取: ${context.raw} kcal`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9ca3af', font: { size: 11 } }
+                        },
+                        y: {
+                            min: yMin,
+                            grid: { color: '#f3f4f6' },
+                            border: { display: false },
+                            ticks: {
+                                stepSize: 100, // Y 軸以 100 為單位跳轉
+                                color: '#9ca3af',
+                                font: { size: 11 }
+                            }
+                        }
+                    }
+                }
             });
+
+            // 繪製完成後，自動將卷軸捲動到最右側 (最新日期)
+            setTimeout(() => {
+                const scrollWrapper = document.getElementById('chart-scroll-wrapper');
+                if(scrollWrapper) {
+                    scrollWrapper.scrollLeft = scrollWrapper.scrollWidth;
+                }
+            }, 100);
         }
 
         function showToast(msg) {
