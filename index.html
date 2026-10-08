@@ -35,22 +35,29 @@
         <div id="view-home" class="flex flex-col flex-1 w-full overflow-hidden">
             <!-- 頂部區塊 -->
             <div class="px-6 pt-10 pb-6 bg-gradient-to-br from-green-400 to-emerald-600 text-white rounded-b-3xl shadow-lg z-10 flex-shrink-0">
-                <div class="relative w-24 h-24">
-                    <svg class="w-full h-full" viewBox="0 0 100 100">
-                        <circle class="text-white/30 stroke-current" stroke-width="8" cx="50" cy="50" r="40" fill="transparent"></circle>
-                        <circle id="calorie-progress" class="text-white progress-ring__circle stroke-current" stroke-width="8" stroke-linecap="round" cx="50" cy="50" r="40" fill="transparent" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
-                    </svg>
-                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                        <span id="consumed-calories" class="text-2xl font-bold">0</span>
-                        <span class="text-xs opacity-80">kcal</span>
+                <div class="flex justify-between items-start">
+                    <div class="relative w-24 h-24">
+                        <svg class="w-full h-full" viewBox="0 0 100 100">
+                            <circle class="text-white/30 stroke-current" stroke-width="8" cx="50" cy="50" r="40" fill="transparent"></circle>
+                            <circle id="calorie-progress" class="text-white progress-ring__circle stroke-current" stroke-width="8" stroke-linecap="round" cx="50" cy="50" r="40" fill="transparent" stroke-dasharray="251.2" stroke-dashoffset="251.2"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span id="consumed-calories" class="text-2xl font-bold">0</span>
+                            <span class="text-xs opacity-80">kcal</span>
+                        </div>
                     </div>
-                </div>
 
-                <div class="flex flex-col items-end">
-                    <span class="text-sm opacity-90 mb-1">目標熱量: <span id="target-calories-display">2000</span></span>
-                    <div class="text-right">
-                        <span class="text-sm opacity-90">剩餘可攝取</span>
-                        <div class="text-3xl font-bold"><span id="remaining-calories">2000</span></div>
+                    <div class="flex flex-col items-end mt-1">
+                        <!-- 可點擊修改目標熱量的按鈕 -->
+                        <button id="edit-target-btn" class="flex items-center text-sm opacity-90 mb-1 hover:opacity-100 transition-opacity bg-white/10 px-2 py-1 rounded-lg">
+                            <span>目標: <span id="target-calories-display" class="font-bold">2000</span></span>
+                            <i class="ph-fill ph-pencil-simple ml-1.5 text-[10px]"></i>
+                        </button>
+                        
+                        <div class="text-right mt-1">
+                            <span class="text-sm opacity-90">剩餘可攝取</span>
+                            <div class="text-3xl font-bold"><span id="remaining-calories">2000</span></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -61,7 +68,7 @@
                 <div class="mb-6 relative">
                     <label for="food-search" class="block text-sm font-semibold text-gray-700 mb-2">記錄餐點 (支援中英文)</label>
                     <div class="relative">
-                        <input type="text" id="food-search" class="w-full pl-10 pr-12 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="可加份量更準！例：1顆蘋果、100g牛肉...">
+                        <input type="text" id="food-search" class="w-full pl-10 pr-12 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all" placeholder="例：100g豬肉、1顆蘋果、排骨便當...">
                         <i class="ph ph-magnifying-glass absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg"></i>
                         <button id="search-btn" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-emerald-500 text-white p-2 rounded-xl hover:bg-emerald-600 transition-colors">
                             <i class="ph ph-arrow-right text-lg"></i>
@@ -69,7 +76,7 @@
                     </div>
                     <p class="text-[11px] text-gray-500 mt-2 ml-1 space-y-1">
                         <span class="flex items-center gap-1"><i class="ph ph-database text-emerald-500"></i> 優先搜尋台灣資料庫 ➔ 找不到再查 Calorie API</span>
-                        <span class="flex items-center gap-1"><i class="ph ph-lightbulb text-amber-500"></i> 提示：外國API搜「100g豬肉」比單搜「豬肉」更準喔！</span>
+                        <span class="flex items-center gap-1"><i class="ph ph-lightbulb text-amber-500"></i> 提示：加上份量與單位 (如：2顆蛋、500g雞肉) 更準確！</span>
                     </p>
                 </div>
 
@@ -117,11 +124,10 @@
                         <div class="bg-gray-50 px-2 py-1 rounded text-gray-600">脂肪: <span id="result-fat">0.3</span>g</div>
                     </div>
 
-                    <!-- 份量倍數調整區塊 (新增) -->
                     <div class="mt-4 mb-4 bg-gray-50 p-3 rounded-xl border border-gray-100 flex items-center justify-between">
                         <div>
                             <label class="block text-sm font-semibold text-gray-700">攝取份量 (倍數)</label>
-                            <p class="text-[10px] text-gray-500 mt-0.5" id="result-note">* 若資料庫以 100g 為單位，吃 250g 請輸入 2.5</p>
+                            <p class="text-[10px] text-gray-500 mt-0.5" id="result-note">* 依據預設份量進行倍數調整</p>
                         </div>
                         <div class="flex items-center gap-2">
                             <button id="qty-minus" class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100 hover:text-emerald-600 transition-colors shadow-sm"><i class="ph-bold ph-minus"></i></button>
@@ -186,7 +192,7 @@
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 mb-6">
                     <div class="flex justify-between items-center mb-6">
                         <h3 class="font-bold text-gray-800 text-sm">近七天熱量攝取</h3>
-                        <span class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-semibold">目標: 2000</span>
+                        <span id="trend-target-display" class="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-1 rounded-md font-semibold">目標: 2000</span>
                     </div>
                     <div class="relative h-48 w-full flex items-end justify-between gap-1 sm:gap-2 mt-4" id="trend-chart-container">
                         <div id="trend-target-line" class="absolute w-full border-t-2 border-dashed border-emerald-400 z-0" style="bottom: 50%;"></div>
@@ -194,7 +200,7 @@
                 </div>
                 <div class="bg-blue-50 text-blue-800 p-4 rounded-2xl text-xs flex gap-2">
                     <i class="ph-fill ph-info text-lg flex-shrink-0"></i>
-                    <p class="leading-relaxed">這是一個展示用的趨勢頁面。目前包含過去六天的模擬數據以及您今日的實際紀錄，讓您預覽報表效果。</p>
+                    <p class="leading-relaxed">趨勢圖目前包含過去六天的模擬數據以及您今日的實際紀錄，長條圖若超過您的自訂目標即會顯示為紅色警示。</p>
                 </div>
             </div>
         </div>
@@ -209,7 +215,7 @@
                 <i class="ph ph-chart-line-up text-2xl"></i>
                 <span class="text-[10px] mt-1 font-semibold">趨勢</span>
             </button>
-            <button id="nav-profile" class="flex flex-col items-center text-gray-400 hover:text-gray-600 transition-colors" onclick="showToast('個人設定開發中')">
+            <button id="nav-profile" class="flex flex-col items-center text-gray-400 hover:text-gray-600 transition-colors" onclick="showToast('個人設定開發中，目標熱量請於首頁修改')">
                 <i class="ph ph-user text-2xl"></i>
                 <span class="text-[10px] mt-1 font-semibold">我的</span>
             </button>
@@ -219,6 +225,24 @@
     <!-- 自訂提示訊息 Toast -->
     <div id="toast-message" class="fixed top-10 left-1/2 transform -translate-x-1/2 bg-gray-800/95 text-white px-5 py-2.5 rounded-full shadow-lg z-[100] transition-all duration-300 opacity-0 pointer-events-none translate-y-[-20px] backdrop-blur-sm text-sm font-medium whitespace-nowrap">
         <span id="toast-text">訊息內容</span>
+    </div>
+
+    <!-- 設定目標熱量 Modal -->
+    <div id="target-modal" class="fixed inset-0 bg-black/60 hidden z-50 flex items-center justify-center backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+            <div class="flex items-center gap-2 mb-4 text-emerald-600">
+                <i class="ph-fill ph-target text-xl"></i>
+                <h3 class="text-lg font-bold text-gray-800">設定每日目標熱量</h3>
+            </div>
+            <div class="mb-6">
+                <label class="block text-xs font-semibold text-gray-600 mb-2">每日目標 (大卡)</label>
+                <input type="number" id="target-modal-input" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 text-lg font-bold text-gray-700">
+            </div>
+            <div class="flex gap-3">
+                <button id="target-modal-cancel" class="flex-1 py-3 rounded-xl bg-gray-100 text-gray-700 font-semibold hover:bg-gray-200 transition-colors">取消</button>
+                <button id="target-modal-save" class="flex-1 py-3 rounded-xl bg-emerald-500 text-white font-semibold hover:bg-emerald-600 transition-colors shadow-md shadow-emerald-200">儲存目標</button>
+            </div>
+        </div>
     </div>
 
     <!-- 編輯紀錄 Modal -->
@@ -251,13 +275,13 @@
             { name: "珍珠奶茶 (全糖)", calories: 650, carbs: 110, protein: 2, fat: 15 }
         ];
 
-        let dailyTarget = 2000;
+        // 讀取本地儲存的目標熱量，若無則預設 2000
+        let dailyTarget = parseInt(localStorage.getItem('diet_target')) || 2000;
         let consumed = 0;
         let foodLogs = [];
         
-        let baseSearchResult = null; // 儲存原始1倍的搜尋資料
-        let currentSearchResult = null; // 儲存經過倍數計算後的資料
-        
+        let baseSearchResult = null;
+        let currentSearchResult = null;
         let editingLogId = null;
 
         const ui = {
@@ -279,7 +303,6 @@
             apiKeyInput: document.getElementById('api-key'),
             saveSettingsBtn: document.getElementById('save-settings-btn'),
             sourceBadge: document.getElementById('data-source-badge'),
-            resultNote: document.getElementById('result-note'),
             
             toggleManualBtn: document.getElementById('toggle-manual-btn'),
             manualAddPanel: document.getElementById('manual-add-panel'),
@@ -302,11 +325,19 @@
             trendTargetLine: document.getElementById('trend-target-line'),
             trendAvg: document.getElementById('trend-avg'),
             trendSuccess: document.getElementById('trend-success'),
+            trendTargetDisplay: document.getElementById('trend-target-display'),
 
-            // 份量調整 UI
             qtyInput: document.getElementById('result-qty'),
             qtyMinus: document.getElementById('qty-minus'),
-            qtyPlus: document.getElementById('qty-plus')
+            qtyPlus: document.getElementById('qty-plus'),
+
+            // 自訂目標熱量 UI
+            editTargetBtn: document.getElementById('edit-target-btn'),
+            targetDisplay: document.getElementById('target-calories-display'),
+            targetModal: document.getElementById('target-modal'),
+            targetModalInput: document.getElementById('target-modal-input'),
+            targetModalCancel: document.getElementById('target-modal-cancel'),
+            targetModalSave: document.getElementById('target-modal-save'),
         };
 
         function init() {
@@ -405,10 +436,9 @@
                 editingLogId = null;
             });
 
-            // --- 份量倍數調整事件 ---
             ui.qtyMinus.addEventListener('click', () => {
                 let val = parseFloat(ui.qtyInput.value) || 1;
-                if (val > 0.1) { // 允許小數點倍數
+                if (val > 0.1) {
                     ui.qtyInput.value = Math.max(0.1, (val - 0.1)).toFixed(1);
                     updateResultDisplay();
                 }
@@ -429,9 +459,34 @@
                 }
                 updateResultDisplay();
             });
+
+            // --- 目標熱量設定事件 ---
+            ui.editTargetBtn.addEventListener('click', () => {
+                ui.targetModalInput.value = dailyTarget;
+                ui.targetModal.classList.remove('hidden');
+            });
+
+            ui.targetModalCancel.addEventListener('click', () => {
+                ui.targetModal.classList.add('hidden');
+            });
+
+            ui.targetModalSave.addEventListener('click', () => {
+                const newTarget = parseInt(ui.targetModalInput.value);
+                if (isNaN(newTarget) || newTarget < 500) {
+                    showToast('請輸入合理的熱量數值 (至少 500 大卡)！');
+                    return;
+                }
+                dailyTarget = newTarget;
+                localStorage.setItem('diet_target', dailyTarget);
+                updateUI();
+                if (!ui.viewTrends.classList.contains('hidden')) {
+                    renderTrendsChart();
+                }
+                ui.targetModal.classList.add('hidden');
+                showToast('目標熱量已更新！');
+            });
         }
 
-        // --- 視圖切換與圖表邏輯 ---
         function switchView(view) {
             if (view === 'home') {
                 ui.viewHome.classList.remove('hidden');
@@ -470,6 +525,7 @@
             
             ui.trendAvg.textContent = avg;
             ui.trendSuccess.textContent = successDays;
+            ui.trendTargetDisplay.textContent = '目標: ' + dailyTarget;
 
             const existingBars = ui.trendChartContainer.querySelectorAll('.bar-col');
             existingBars.forEach(bar => bar.remove());
@@ -547,7 +603,6 @@
             ui.status.innerHTML = '<i class="ph ph-magnifying-glass animate-bounce inline-block mr-1"></i> 正在搜尋台灣本地資料庫...';
             
             try {
-                // 1. 本地搜尋
                 const localMatch = taiwanLocalDB.find(item => 
                     item.name.toLowerCase().includes(query.toLowerCase()) || 
                     query.toLowerCase().includes(item.name.toLowerCase())
@@ -568,7 +623,6 @@
                     return; 
                 }
 
-                // 2. 翻譯
                 ui.status.innerHTML = '<i class="ph ph-translate animate-pulse inline-block mr-1"></i> 嘗試翻譯並搜尋 Calorie API...';
                 let englishQuery = query;
                 if (/[\u4e00-\u9fa5]/.test(query)) {
@@ -595,13 +649,13 @@
                         });
                     } catch (fetchError) {
                         console.error("Fetch Error:", fetchError);
-                        throw new Error(`網路連線失敗 / CORS 錯誤。請確認您已在 GitHub Pages 或正式網域上執行此程式碼。(${fetchError.message})`);
+                        throw new Error(`網路連線失敗或被瀏覽器擋下 (CORS Error)。請將此檔案上傳至 GitHub Pages 取得正式網域後再試一次！`);
                     }
                     
-                    if (response.status === 401) throw new Error("API 金鑰無效 (401)。請檢查您輸入的 Calorie API Key 是否正確且無前後空白。");
+                    if (response.status === 401) throw new Error("API 金鑰無效 (401)。請檢查您設定的 Calorie API Key 是否有複製完整、沒有前後空白。");
                     if (response.status === 429) throw new Error("API 請求次數過多 (429)，請稍後再試。");
-                    if (response.status === 404) throw new Error(`找不到符合「${query}」的食物資料。`);
-                    if (!response.ok) throw new Error(`API 伺服器錯誤 (狀態碼: ${response.status})`);
+                    if (response.status === 404) throw new Error(`在全網資料庫中找不到符合「${query}」的資料。`);
+                    if (!response.ok) throw new Error(`API 伺服器發生錯誤 (狀態碼: ${response.status})`);
                     
                     const data = await response.json();
 
@@ -623,7 +677,7 @@
                         };
                         showResultCard(resultData);
                     } else {
-                        throw new Error(`在資料庫中找不到「${query}」的熱量資訊。`);
+                        throw new Error(`抱歉，找不到「${query}」的熱量資訊。請嘗試更換關鍵字或手動輸入。`);
                     }
                 } else {
                     await new Promise(r => setTimeout(r, 600));
@@ -640,13 +694,12 @@
         }
 
         function showResultCard(data) {
-            baseSearchResult = data; // 存下原始 1 倍的數值
-            ui.qtyInput.value = '1.0'; // 重設倍數為 1
+            baseSearchResult = data; 
+            ui.qtyInput.value = '1.0'; 
             
             document.getElementById('result-title').textContent = data.name;
             document.getElementById('result-translation').textContent = `關鍵字: ${data.originalName}`;
             
-            // 處理來源標籤
             if (data.source === 'tw_db') {
                 ui.sourceBadge.textContent = '來源: 台灣資料庫';
                 ui.sourceBadge.className = 'absolute top-0 right-0 bg-orange-100 text-orange-700 text-[10px] px-2 py-1 rounded-bl-lg font-semibold';
@@ -658,30 +711,25 @@
                 ui.sourceBadge.className = 'absolute top-0 right-0 bg-gray-200 text-gray-700 text-[10px] px-2 py-1 rounded-bl-lg font-semibold';
             }
 
-            // 呼叫更新畫面的函式來處理數值顯示
             updateResultDisplay();
             ui.resultCard.classList.remove('hidden');
         }
 
-        // --- 新增：負責依照「倍數」重新計算並更新畫面的函式 ---
         function updateResultDisplay() {
             if (!baseSearchResult) return;
             
             const qty = parseFloat(ui.qtyInput.value) || 1;
             
-            // 計算乘上倍數後的值
             const calcCals = Math.round(baseSearchResult.calories * qty);
             const calcCarbs = (baseSearchResult.carbs * qty).toFixed(1);
             const calcProtein = (baseSearchResult.protein * qty).toFixed(1);
             const calcFat = (baseSearchResult.fat * qty).toFixed(1);
 
-            // 更新畫面 DOM
             document.getElementById('result-calories').textContent = calcCals;
             document.getElementById('result-carbs').textContent = calcCarbs;
             document.getElementById('result-protein').textContent = calcProtein;
             document.getElementById('result-fat').textContent = calcFat;
 
-            // 更新 currentSearchResult，這樣按下「新增」時才會存入正確的熱量與名稱
             let displayName = baseSearchResult.name;
             if (qty !== 1) displayName += ` (x${qty})`;
 
@@ -718,7 +766,9 @@
         }
 
         function updateUI() {
+            ui.targetDisplay.textContent = dailyTarget;
             ui.consumedDisplay.textContent = consumed;
+            
             let remaining = dailyTarget - consumed;
             ui.remainingDisplay.textContent = remaining > 0 ? remaining : 0;
             
