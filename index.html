@@ -326,8 +326,6 @@
         // 🔑 隱藏的預設 API 金鑰設定區塊
         // ==========================================
         // 如果您想讓親友直接使用，請將您申請到的金鑰填入下方的單引號中。
-        // 例如：const DEFAULT_API_KEY = 'sk_live_12345abcde...';
-        // 若保持空白，則維持需要使用者手動輸入的模式。
         const DEFAULT_API_KEY = ''; 
         // ==========================================
 
@@ -838,23 +836,38 @@
                 if (apiKey) {
                     let response;
                     try {
-                        response = await fetch(`https://api.calorieapi.com/v1/nutrition?query=${encodeURIComponent(englishQuery)}`, {
-                            headers: { 'X-Api-Key': apiKey, 'Content-Type': 'application/json' }
+                        // 修正 1: 更新為 Calorie API 最新的官方搜尋端點
+                        const targetUrl = `https://api.calorieapi.com/api/v1/search/foods?q=${encodeURIComponent(englishQuery)}`;
+                        
+                        // 修正 2: 加入 corsproxy 代理伺服器，完美繞過瀏覽器 CORS 安全限制
+                        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+                        
+                        response = await fetch(proxyUrl, {
+                            headers: { 
+                                'X-Api-Key': apiKey, 
+                                'Content-Type': 'application/json' 
+                            }
                         });
                     } catch (err) {
-                        throw new Error(`<b>網路連線或 CORS 錯誤</b><br>請將檔案上傳至 GitHub Pages 取得正式網域後再試。<br><span class="text-xs text-gray-500">技術細節: ${err.message}</span>`);
+                        throw new Error(`<b>連線失敗 (Proxy/CORS 錯誤)</b><br>請確認網路連線是否正常。<br><span class="text-xs text-gray-500">技術細節: ${err.message}</span>`);
                     }
                     
-                    if (response.status === 401 || response.status === 403) throw new Error("<b>API 金鑰無效 (401)</b><br>您的金鑰可能錯誤，或額度已用盡。");
+                    if (response.status === 401 || response.status === 403) throw new Error("<b>API 金鑰無效 (401)</b><br>請到「我的」頁面檢查您的金鑰是否複製完整。");
                     if (response.status === 404) throw new Error(`找不到符合「${query}」的資料，請換個關鍵字或嘗試手動新增。`);
-                    if (!response.ok) throw new Error(`API 伺服器發生錯誤 (代碼: ${response.status})，請稍後再試。`);
+                    if (response.status === 402) throw new Error(`<b>免費額度已用盡 (402)</b><br>您這個月的 1,000 次額度可能已經用完了。`);
+                    if (!response.ok) throw new Error(`伺服器發生錯誤 (代碼: ${response.status})，請稍後再試。`);
                     
                     const data = await response.json();
                     
-                    if (data && data.items && data.items.length > 0) {
+                    // 修正 3: 增強資料結構的相容解析 (避免因 API 結構改版而崩潰)
+                    const results = data.items || data.foods || data.data || (Array.isArray(data) ? data : []);
+                    
+                    if (results && results.length > 0) {
                         let totalCalories = 0;
-                        let foodName = data.items.map(item => item.name).join(', ');
-                        data.items.forEach(item => totalCalories += item.calories);
+                        let foodName = results.map(item => item.name || item.food_name).join(', ');
+                        results.forEach(item => {
+                            totalCalories += (item.calories || item.nf_calories || item.energy || 0);
+                        });
                         
                         showResultCard({
                             name: foodName || englishQuery, originalName: query,
@@ -1029,13 +1042,11 @@
         }
 
         function loadData() {
-            // 讀取裝置中儲存的金鑰
             let savedApiKey = localStorage.getItem('calorie_api_key');
             
-            // 【新增邏輯】：若裝置沒存金鑰，且我們有設定預設金鑰，就自動派發
             if (!savedApiKey && DEFAULT_API_KEY && DEFAULT_API_KEY.trim() !== '') {
                 savedApiKey = DEFAULT_API_KEY;
-                localStorage.setItem('calorie_api_key', savedApiKey); // 幫親友自動存入手機
+                localStorage.setItem('calorie_api_key', savedApiKey); 
             }
 
             if (savedApiKey) {
